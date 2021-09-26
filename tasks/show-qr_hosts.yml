@@ -1,0 +1,16 @@
+---
+
+  - block:
+
+      - name: "Show config in QR format for {{ client.name }}"
+        shell: "/etc/fwknop/console-qr.sh < /tmp/{{ client.name }}/{{ stanza.name }}.rc"
+        register: qr
+
+      - debug:
+          msg: "{{ qr.stdout_lines }}"
+
+      - pause:
+          prompt: "Copy config for stanza {{ stanza.name }} on client {{ client.name }}"          
+
+    when: (mobiles == True) and ('mobile' in client) and (client.mobile == True)
+

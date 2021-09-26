@@ -1,0 +1,11 @@
+---
+
+  - set_fact:
+      config_client: "/etc/fwknop/clients"
+
+  - name: Add config to client config file
+    assemble:
+      src: "/tmp/{{ client.name }}"
+      dest: "{{ config_client }}/{{ client.name }}.rc"
+      delimiter: "### {{ fwknop.hostname }} ###"
+

@@ -1,0 +1,47 @@
+---
+
+  - name: Install packages
+    package:
+      name:
+        - fwknop-server
+        - fwknop-client
+        - qrencode
+      state: latest
+
+  - name: Copy QR exporter script
+    copy:
+      src: "console-qr.sh"
+      dest: "/etc/fwknop/console-qr.sh"
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Setup fwknop config file
+    lineinfile:
+      path: "/etc/fwknop/fwknopd.conf"
+      regexp: "{{ cfg.regexp }}"
+      line: "{{ cfg.replace }}"
+    loop: "{{ items }}"
+    loop_control:
+      loop_var: "cfg"
+    vars:
+      items:
+        - { regexp: "^#PCAP_INTF(.*);$", replace: "PCAP_INTF    eth0;" }
+        - { regexp: "^#PCAP_FILTER(.*);$", replace: "PCAP_FILTER    udp dst portrange 10000-62200;"}
+        - { regexp: "^#ENABLE_SPA_PACKET_AGING(.*);$", replace: "ENABLE_SPA_PACKET_AGING    Y;"}
+        - { regexp: "^#MAX_SPA_PACKET_AGE(.*);$", replace: "MAX_SPA_PACKET_AGE    120;"}
+
+  - name: Clean fwknop access file
+    lineinfile:
+      path: "/etc/fwknop/access.conf"
+      regexp: "{{ cfg }}"
+      state: absent
+    loop: "{{ items }}"
+    loop_control:
+      loop_var: "cfg"
+    vars:
+      items:
+        # - "^SOURCE(.*)ANY$"
+        - "^KEY_BASE64(.*)__CHANGEME__$"
+        - "^HMAC_KEY_BASE64(.*)__CHANGEME__$"
+

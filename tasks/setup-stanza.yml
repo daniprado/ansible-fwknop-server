@@ -1,0 +1,88 @@
+---
+
+  - set_fact:
+      port_protos: "{{ port_protos|default([]) + [ item.proto + '/' + item.number|string ] }}"
+    loop: "{{ stanza.ports }}"
+
+  - set_fact:
+      config_client: "/etc/fwknop/clients"
+      config_server: "/etc/fwknop"
+      access: "{{ port_protos | join(',') }}"
+
+  - name: Create client config directory
+    file:
+      path: "{{ config_client }}"
+      state: directory
+
+  - name: Create temp folders
+    file:
+      path: "/tmp/{{ client.name }}"
+      state: directory
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client"
+
+  - name: Create config for stanza and client
+    command: "fwknop --named-config {{ fwknop.hostname }}_{{ stanza.name }} --access {{ access }} --destination {{ fwknop.domain }} --spoof-user {{ client.user }} --resolve-url {{ fwknop.resolve_url }} --resolve-ip-https --key-gen --use-hmac --rand-port --save-rc-stanza --force-stanza --rc-file /tmp/{{ client.name }}/{{ stanza.name }}.rc"
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client"
+
+  - name: Clean default section
+    lineinfile:
+      path: "/tmp/{{ client.name }}/{{ stanza.name }}.rc"
+      regexp: "^[default]$"
+      state: absent
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client"
+
+  - name: Get Base64 keys for clients
+    shell: "cat /tmp/{{ client.name }}/{{ stanza.name }}.rc | grep '^KEY_BASE64' | awk '{ print $2 }'"
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client"
+    register: keys
+
+  - set_fact:
+      key_base64: "{{ key_base64|default({}) | combine({key.client.name: key.stdout}) }}"
+    loop: "{{ keys.results }}"
+    loop_control:
+      loop_var: "key"
+
+  - name: Get HMAC keys for clients
+    shell: "cat /tmp/{{ client.name }}/{{ stanza.name }}.rc | grep '^HMAC_KEY_BASE64' | awk '{ print $2 }'"
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client"
+    register: keys
+
+  - set_fact:
+      key_hmac: "{{ key_hmac|default({}) | combine({key.client.name: key.stdout}) }}"
+    loop: "{{ keys.results }}"
+    loop_control:
+      loop_var: "key"
+
+  - name: Add config to server config file
+    blockinfile:
+      path: "{{ config_server }}/access.conf"
+      marker: "# {mark} {{ stanza.name }}_{{ client.name }}"
+      block: |
+        SOURCE                     ANY
+        OPEN_PORTS                 {{ access }}
+        REQUIRE_SOURCE_ADDRESS     Y
+        REQUIRE_USERNAME           {{ client.user }}
+        FW_ACCESS_TIMEOUT          {{ stanza.timeout }}
+        KEY_BASE64                 {{ key_base64[client.name] }}
+        HMAC_KEY_BASE64            {{ key_hmac[client.name] }}
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "client" 
+
+  - include: show-qr_hosts.yml
+    vars:
+      client: "{{ cli }}"
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "cli"
+

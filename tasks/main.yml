@@ -1,0 +1,23 @@
+---
+
+  - include: install-software.yml
+
+  - include: setup-stanza.yml
+    vars:
+      stanza: "{{ sta }}"
+    loop: "{{ fwknop.stanzas }}"
+    loop_control:
+      loop_var: "sta"
+
+  - name: Restart fwknop-server
+    service:
+      name: "fwknop-server"
+      state: restarted
+
+  - include: add-client_hosts.yml
+    vars:
+      client: "{{ cli }}"
+    loop: "{{ fwknop.clients }}"
+    loop_control:
+      loop_var: "cli"
+
