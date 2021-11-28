@@ -1,6 +1,6 @@
 # ansible-fwknop-server
 
-Ansible role to setup a [[https://www.cipherdyne.org/fwknop/|fwknop]] server also creating config files for its clients.  This works on Ubuntu and Arch Linux based linux systems.
+Ansible role to setup a [fwknop](https://www.cipherdyne.org/fwknop/) server also creating config files for its clients.  This works on Ubuntu and Arch Linux based linux systems.
 
 ## Usage
 
